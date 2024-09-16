@@ -8,101 +8,95 @@ import "../prize-strategy/multiple-winners/BanklessMultipleWinnersProxyFactory.s
 
 /* solium-disable security/no-block-members */
 contract BanklessMultipleWinnersBuilder {
+    event MultipleWinnersCreated(address indexed prizeStrategy);
 
-  event MultipleWinnersCreated(address indexed prizeStrategy);
+    struct MultipleWinnersConfig {
+        RNGInterface rngService;
+        uint256 prizePeriodStart;
+        uint256 prizePeriodSeconds;
+        string ticketName;
+        string ticketSymbol;
+        string sponsorshipName;
+        string sponsorshipSymbol;
+        uint256 ticketCreditLimitMantissa;
+        uint256 ticketCreditRateMantissa;
+    }
 
-  struct MultipleWinnersConfig {
-    RNGInterface rngService;
-    uint256 prizePeriodStart;
-    uint256 prizePeriodSeconds;
-    string ticketName;
-    string ticketSymbol;
-    string sponsorshipName;
-    string sponsorshipSymbol;
-    uint256 ticketCreditLimitMantissa;
-    uint256 ticketCreditRateMantissa;
-  }
+    BanklessMultipleWinnersProxyFactory public multipleWinnersProxyFactory;
+    ControlledTokenBuilder public controlledTokenBuilder;
 
-  BanklessMultipleWinnersProxyFactory public multipleWinnersProxyFactory;
-  ControlledTokenBuilder public controlledTokenBuilder;
+    constructor(
+        BanklessMultipleWinnersProxyFactory _multipleWinnersProxyFactory,
+        ControlledTokenBuilder _controlledTokenBuilder
+    ) public {
+        require(
+            address(_multipleWinnersProxyFactory) != address(0),
+            "MultipleWinnersBuilder/multipleWinnersProxyFactory-not-zero"
+        );
+        require(address(_controlledTokenBuilder) != address(0), "MultipleWinnersBuilder/token-builder-not-zero");
+        multipleWinnersProxyFactory = _multipleWinnersProxyFactory;
+        controlledTokenBuilder = _controlledTokenBuilder;
+    }
 
-  constructor (
-    BanklessMultipleWinnersProxyFactory _multipleWinnersProxyFactory,
-    ControlledTokenBuilder _controlledTokenBuilder
-  ) public {
-    require(address(_multipleWinnersProxyFactory) != address(0), "MultipleWinnersBuilder/multipleWinnersProxyFactory-not-zero");
-    require(address(_controlledTokenBuilder) != address(0), "MultipleWinnersBuilder/token-builder-not-zero");
-    multipleWinnersProxyFactory = _multipleWinnersProxyFactory;
-    controlledTokenBuilder = _controlledTokenBuilder;
-  }
+    function createMultipleWinners(
+        BanklessPrizePool prizePool,
+        MultipleWinnersConfig memory prizeStrategyConfig,
+        uint8 decimals,
+        address owner
+    ) external returns (BanklessMultipleWinners) {
+        BanklessMultipleWinners mw = multipleWinnersProxyFactory.create();
 
-  function createMultipleWinners(
-    BanklessPrizePool prizePool,
-    MultipleWinnersConfig memory prizeStrategyConfig,
-    uint8 decimals,
-    address owner
-  ) external returns (BanklessMultipleWinners) {
-    BanklessMultipleWinners mw = multipleWinnersProxyFactory.create();
+        Ticket ticket = _createTicket(
+            prizeStrategyConfig.ticketName,
+            prizeStrategyConfig.ticketSymbol,
+            decimals,
+            prizePool
+        );
 
-    Ticket ticket = _createTicket(
-      prizeStrategyConfig.ticketName,
-      prizeStrategyConfig.ticketSymbol,
-      decimals,
-      prizePool
-    );
+        ControlledToken sponsorship = _createSponsorship(
+            prizeStrategyConfig.sponsorshipName,
+            prizeStrategyConfig.sponsorshipSymbol,
+            decimals,
+            prizePool
+        );
 
-    ControlledToken sponsorship = _createSponsorship(
-      prizeStrategyConfig.sponsorshipName,
-      prizeStrategyConfig.sponsorshipSymbol,
-      decimals,
-      prizePool
-    );
+        mw.initializeMultipleWinners(
+            prizeStrategyConfig.prizePeriodStart,
+            prizeStrategyConfig.prizePeriodSeconds,
+            prizePool,
+            ticket,
+            sponsorship,
+            prizeStrategyConfig.rngService
+        );
 
-    mw.initializeMultipleWinners(
-      prizeStrategyConfig.prizePeriodStart,
-      prizeStrategyConfig.prizePeriodSeconds,
-      prizePool,
-      ticket,
-      sponsorship,
-      prizeStrategyConfig.rngService
-    );
+        mw.transferOwnership(owner);
 
-    mw.transferOwnership(owner);
+        emit MultipleWinnersCreated(address(mw));
 
-    emit MultipleWinnersCreated(address(mw));
+        return mw;
+    }
 
-    return mw;
-  }
+    function _createTicket(
+        string memory name,
+        string memory token,
+        uint8 decimals,
+        PrizePool prizePool
+    ) internal returns (Ticket) {
+        return
+            controlledTokenBuilder.createTicket(
+                ControlledTokenBuilder.ControlledTokenConfig(name, token, decimals, prizePool)
+            );
+    }
 
-  function _createTicket(
-    string memory name,
-    string memory token,
-    uint8 decimals,
-    PrizePool prizePool
-  ) internal returns (Ticket) {
-    return controlledTokenBuilder.createTicket(
-      ControlledTokenBuilder.ControlledTokenConfig(
-        name,
-        token,
-        decimals,
-        prizePool
-      )
-    );
-  }
-
-  function _createSponsorship(
-    string memory name,
-    string memory token,
-    uint8 decimals,
-    PrizePool prizePool
-  ) internal returns (ControlledToken) {
-    return controlledTokenBuilder.createControlledToken(
-      ControlledTokenBuilder.ControlledTokenConfig(
-        name,
-        token,
-        decimals,
-        prizePool
-      )
-    );
-  }
+    function _createSponsorship(
+        string memory name,
+        string memory token,
+        uint8 decimals,
+        PrizePool prizePool
+    ) internal returns (ControlledToken) {
+        return
+            controlledTokenBuilder.createControlledToken(
+                ControlledTokenBuilder.ControlledTokenConfig(name, token, decimals, prizePool)
+            );
+    }
 }

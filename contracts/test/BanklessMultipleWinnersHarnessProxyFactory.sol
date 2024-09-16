@@ -7,14 +7,13 @@ import "@pooltogether/pooltogether-contracts/contracts/external/openzeppelin/Pro
 
 /// @title Creates a minimal proxy to the MultipleWinners prize strategy.  Very cheap to deploy.
 contract BanklessMultipleWinnersHarnessProxyFactory is ProxyFactory {
+    BanklessMultipleWinnersHarness public instance;
 
-  BanklessMultipleWinnersHarness public instance;
+    constructor() public {
+        instance = new BanklessMultipleWinnersHarness();
+    }
 
-  constructor () public {
-    instance = new BanklessMultipleWinnersHarness();
-  }
-
-  function create() external returns (BanklessMultipleWinnersHarness) {
-    return BanklessMultipleWinnersHarness(deployMinimal(address(instance), ""));
-  }
+    function create() external returns (BanklessMultipleWinnersHarness) {
+        return BanklessMultipleWinnersHarness(deployMinimal(address(instance), ""));
+    }
 }

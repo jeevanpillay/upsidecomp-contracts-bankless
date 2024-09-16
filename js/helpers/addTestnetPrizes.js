@@ -11,11 +11,11 @@ function green() {
 }
 
 async function addTestnetPrizes(prizePoolContractAddress, numberOfPrizes) {
-  const {getNamedAccounts, deployments, ethers} = hardhat;
-  const {deploy} = deployments;
+  const { getNamedAccounts, deployments, ethers } = hardhat;
+  const { deploy } = deployments;
   const toWei = ethers.utils.parseEther;
 
-  const {deployer, admin} = await getNamedAccounts();
+  const { deployer, admin } = await getNamedAccounts();
   const signer = await ethers.provider.getSigner(admin);
 
   // deploy erc721

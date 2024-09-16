@@ -11,59 +11,74 @@ function green() {
 }
 
 async function main() {
-  const {getNamedAccounts, deployments, ethers} = hardhat;
-  const {deploy} = deployments;
+  const { getNamedAccounts, deployments, ethers } = hardhat;
+  const { deploy } = deployments;
   const toWei = ethers.utils.parseEther;
 
-  const {deployer, admin} = await getNamedAccounts();
+  const { deployer, admin } = await getNamedAccounts();
   const signer = await ethers.provider.getSigner(admin);
+
+  const BANKLESS_MULTIPLE_WINNERS =
+    "0x4C0216192e671e2E767236045067E48762Ec6c96";
+  const BANKLESS_PRIZE_POOL = "0x29c4B18a595E5e78C7Bcd2aDcCE881F677FF2Ab7";
 
   const prizeStrategy = await hardhat.ethers.getContractAt(
     "BanklessMultipleWinners",
-    "0x4C0216192e671e2E767236045067E48762Ec6c96",
+    BANKLESS_MULTIPLE_WINNERS,
     signer
   );
 
-  debug("prizeStrategyAddress: ", prizeStrategy.address);
+  const prizePool = await hardhat.ethers.getContractAt(
+    "BanklessPrizePool",
+    BANKLESS_PRIZE_POOL,
+    signer
+  );
 
-  debug("Start Award Winner");
-  let tx = await prizeStrategy.startAward();
-  console.log("tx1", tx.hash);
-  debug("tx1", tx.hash);
-  await ethers.provider.waitForTransaction(tx.hash);
+  dim("BanklessMultipleWinners Address: ", prizeStrategy.address);
+  dim("BanklessPrizePool Address: ", prizePool.address);
 
-  debug("Complete Award Winner");
-  let tx2 = await prizeStrategy.completeAward();
-  console.log("tx2", tx2.hash);
-  debug("tx2", tx2.hash);
-  await ethers.provider.waitForTransaction(tx2.hash);
+  // dim("Start Award Winner");
+  // const startAwardTx = await prizeStrategy.startAward();
+  // dim("Start Award Tx Hash", startAwardTx.hash);
+  // await ethers.provider.waitForTransaction(startAwardTx.hash);
+  // const startAwardReceipt = await ethers.provider.getTransactionReceipt(
+  //   startAwardTx.hash
+  // );
+
+  if (await prizeStrategy.canCompleteAward()) {
+    dim("Complete Award Winner");
+    const completeAwardTx = await prizeStrategy.completeAward();
+    await ethers.provider.waitForTransaction(completeAwardTx.hash);
+    const completeAwardReceipt = await ethers.provider.getTransactionReceipt(
+      completeAwardTx.hash
+    );
+    dim(
+      `Gas used to completeAward: ${completeAwardReceipt.gasUsed.toString()}`
+    );
+    const completeAwardEvents = completeAwardReceipt.logs.reduce(
+      (array, log) => {
+        try {
+          array.push(prizePool.interface.parseLog(log));
+        } catch (e) {}
+        return array;
+      },
+      []
+    );
+
+    const awardedEvents = completeAwardEvents.filter(
+      event => event.name === "DistributedAward"
+    );
+
+    awardedEvents.forEach(event => {
+      console.log(
+        `Awarded ${event.args.tokenId} of token ${event.args.externalToken} to ${event.args.to}`
+      );
+    });
+  } else {
+    debug("Can't Complete Award");
+  }
 
   debug("Done!");
-  // const BanklessMultipleWinners = await hardhat.artifacts.readArtifact(
-  //   "BanklessMultipleWinners"
-  // );
-  // const bmw = new ethers.utils.Interface(BanklessMultipleWinners.abi);
-  // const createResultReceipt = await ethers.provider.getTransactionReceipt(
-  //   tx2.hash
-  // );
-  // console.log("all", createResultReceipt);
-  // console.log(
-  //   "logs",
-  //   createResultReceipt.logs.forEach(log => {
-  //     l = bmw.parseLog(log);
-  //     if (l.name == "")
-  //   })
-  // );
-  // const tokenIds = createResultReceipt.logs
-  //   .map(log => {
-  //     try {
-  //       l = erc721.parseLog(log);
-  //       if (l.name == "Minted") return l.args.tokenId.toNumber();
-  //     } catch (e) {
-  //       return nulls;
-  //     }
-  //   })
-  //   .filter(x => x !== undefined);
 }
 
 main()

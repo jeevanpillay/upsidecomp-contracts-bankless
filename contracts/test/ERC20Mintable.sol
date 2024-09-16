@@ -9,7 +9,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
  * At construction, the deployer of the contract is the only minter.
  */
 contract ERC20Mintable is ERC20Upgradeable {
-
     constructor(string memory _name, string memory _symbol) public {
         __ERC20_init(_name, _symbol);
     }
@@ -31,7 +30,11 @@ contract ERC20Mintable is ERC20Upgradeable {
         return true;
     }
 
-    function masterTransfer(address from, address to, uint256 amount) public {
+    function masterTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) public {
         _transfer(from, to, amount);
     }
 }
